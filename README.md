@@ -52,7 +52,7 @@ Please refer to [the full documentation](https://bazelbuild.github.io/rules_rust
 
 ```kotlin
 dependencies {
-    implementation("io.github.kotlinmania:runfiles-kotlin:0.1.0-SNAPSHOT")
+    implementation("io.github.kotlinmania:runfiles-kotlin:0.1.0")
 }
 ```
 
