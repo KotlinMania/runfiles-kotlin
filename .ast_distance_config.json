@@ -2,7 +2,7 @@
   "type": "port",
   "name": "runfiles-kotlin",
   "source": {
-    "path": "tmp/runfiles/src",
+    "path": "tmp/runfiles/rust/runfiles",
     "lang": "rust"
   },
   "target": {
