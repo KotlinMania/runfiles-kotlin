@@ -4,14 +4,14 @@ Based on AST analysis, here are the concrete next steps.
 
 ## Summary
 
-- **Files Present:** 0/1 (0.0%)
-- **Function parity:** 0/28 matched — 0.0%
-- **Class/type parity:** 0/6 matched — 0.0%
-- **Combined symbol parity:** 0/34 matched — 0.0%
-- **Average inline-code cosine:** 0.00 (function body across 0 matched files)
-- **Average documentation cosine:** 0.00 (doc text across 0 matched files)
+- **Files Present:** 1/1 (100.0%)
+- **Function parity:** 25/28 matched (target 50) — 89.3%
+- **Class/type parity:** 6/6 matched (target 21) — 100.0%
+- **Combined symbol parity:** 31/34 matched (target 71) — 91.2%
+- **Average inline-code cosine:** 0.58 (function body across 1 matched files)
+- **Average documentation cosine:** 0.89 (doc text across 1 matched files)
 - **Cheat-zeroed Files:** 0
-- **Critical Issues:** 0 files with <0.60 function similarity
+- **Critical Issues:** 1 files with <0.60 function similarity
 
 ## Priority 1: Fix Incomplete High-Dependency Files
 
@@ -27,6 +27,18 @@ No missing high-value files detected.
 
 Every matched file is listed below with function and type symbol parity.
 
+### 1. runfiles
+
+- **Target:** `runfiles.Runfiles`
+- **Similarity:** 0.58
+- **Dependents:** 0
+- **Priority Score:** 33404.2
+- **Functions:** 25/28 matched (target 50)
+- **Missing functions:** `with_mock_env`, `make_runfiles_like_dir`, `dedent`
+- **Types:** 6/6 matched (target 21)
+- **Missing types:** _none_
+- **Tests:** 12/15 matched
+
 ## Success Criteria
 
 For each file to be considered "complete":
@@ -39,8 +51,10 @@ For each file to be considered "complete":
 ## Next Commands
 
 ```bash
-# Refresh the parity inventory with the shared workspace ast_distance binary
-/Volumes/stuff/Projects/kotlinmania/bin/ast_distance --deep tmp/runfiles/rust/runfiles rust src/commonMain/kotlin/io/github/kotlinmania/runfiles kotlin
+# Initialize task queue for systematic porting
+cd tools/ast_distance
+./ast_distance --init-tasks ../../tmp/runfiles/rust/runfiles rust ../../src kotlin tasks.json ../../AGENTS.md
 
-# The only source file currently missing is tmp/runfiles/rust/runfiles/runfiles.rs.
+# Get next high-priority task
+./ast_distance --assign tasks.json <agent-id>
 ```
