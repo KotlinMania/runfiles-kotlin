@@ -199,10 +199,18 @@ kotlin {
         binaries.framework { baseName = "Runfiles"; xcf.add(this) }
     }
     iosSimulatorArm64 {
-        binaries.framework { baseName = "Runfiles"; xcf.add(this) }
+        binaries.framework {
+            baseName = "Runfiles"
+            isStatic = true
+            xcf.add(this)
+        }
     }
     iosX64 {
-        binaries.framework { baseName = "Runfiles"; xcf.add(this) }
+        binaries.framework {
+            baseName = "Runfiles"
+            isStatic = true
+            xcf.add(this)
+        }
     }
 
     tvosArm64 {
