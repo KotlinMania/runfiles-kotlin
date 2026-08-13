@@ -36,12 +36,14 @@ sealed class RunfilesError(
     data object RunfilesDirNotFound : RunfilesError("RunfilesDirNotFound")
 
     /** An I/O error which occurred during the creation of directory-based runfiles. */
-    class RunfilesDirIoError(val error: Throwable) :
-        RunfilesError("RunfilesDirIoError: ${error.message ?: error.toString()}", error.toString(), error)
+    class RunfilesDirIoError(
+        val error: Throwable,
+    ) : RunfilesError("RunfilesDirIoError: ${error.message ?: error.toString()}", error.toString(), error)
 
     /** An I/O error which occurred during the creation of manifest-file-based runfiles. */
-    class RunfilesManifestIoError(val error: Throwable) :
-        RunfilesError("RunfilesManifestIoError: ${error.message ?: error.toString()}", error.toString(), error)
+    class RunfilesManifestIoError(
+        val error: Throwable,
+    ) : RunfilesError("RunfilesManifestIoError: ${error.message ?: error.toString()}", error.toString(), error)
 
     /** A manifest file could not be parsed. */
     data object RunfilesManifestInvalidFormat : RunfilesError("RepoMappingInvalidFormat")
@@ -53,16 +55,19 @@ sealed class RunfilesError(
     data object RepoMappingInvalidFormat : RunfilesError("RepoMappingInvalidFormat")
 
     /** An I/O error which occurred during the parsing of a repo-mapping file. */
-    class RepoMappingIoError(val error: Throwable) :
-        RunfilesError("RepoMappingIoError: ${error.message ?: error.toString()}", error.toString(), error)
+    class RepoMappingIoError(
+        val error: Throwable,
+    ) : RunfilesError("RepoMappingIoError: ${error.message ?: error.toString()}", error.toString(), error)
 
     /** An error indicating a specific runfile was not found. */
-    class RunfileNotFound(val path: String) :
-        RunfilesError("RunfileNotFound: $path", path)
+    class RunfileNotFound(
+        val path: String,
+    ) : RunfilesError("RunfileNotFound: $path", path)
 
     /** An I/O error which occurred when operating with a particular runfile. */
-    class RunfileIoError(val error: Throwable) :
-        RunfilesError("RunfileIoError: ${error.message ?: error.toString()}", error.toString(), error)
+    class RunfileIoError(
+        val error: Throwable,
+    ) : RunfilesError("RunfileIoError: ${error.message ?: error.toString()}", error.toString(), error)
 
     fun fmt(): String = rendered
 
@@ -85,13 +90,17 @@ internal sealed class Mode {
      * environment variable or a neighboring `.runfiles` directory to the
      * executable.
      */
-    data class DirectoryBased(val path: String) : Mode()
+    data class DirectoryBased(
+        val path: String,
+    ) : Mode()
 
     /**
      * Runfiles represented as a mapping of rlocation path to real path
      * indicated by the `RUNFILES_MANIFEST_FILE` environment variable.
      */
-    data class ManifestBased(val pathMapping: Map<String, String>) : Mode()
+    data class ManifestBased(
+        val pathMapping: Map<String, String>,
+    ) : Mode()
 }
 
 /** A pair of source repository and target apparent repository name. */
@@ -140,29 +149,32 @@ class Runfiles internal constructor(
 
         internal fun create(sys: RunfilesSys): Result<Runfiles> {
             val manifestFile = sys.env(MANIFEST_FILE_ENV_VAR)
-            val mode = if (!manifestFile.isNullOrEmpty()) {
-                createManifestBased(manifestFile)
-            } else {
-                val dir = findRunfilesDir(sys).getOrElse { return Result.failure(it) }
-                val manifestPath = pathJoin(dir, "MANIFEST")
-                if (SystemFileSystem.exists(Path(manifestPath))) {
-                    createManifestBased(manifestPath)
+            val mode =
+                if (!manifestFile.isNullOrEmpty()) {
+                    createManifestBased(manifestFile)
                 } else {
-                    Result.success(Mode.DirectoryBased(dir))
-                }
-            }.getOrElse { return Result.failure(it) }
+                    val dir = findRunfilesDir(sys).getOrElse { return Result.failure(it) }
+                    val manifestPath = pathJoin(dir, "MANIFEST")
+                    if (SystemFileSystem.exists(Path(manifestPath))) {
+                        createManifestBased(manifestPath)
+                    } else {
+                        Result.success(Mode.DirectoryBased(dir))
+                    }
+                }.getOrElse { return Result.failure(it) }
 
-            val repoMapping = rawRlocation(mode, "_repo_mapping")
-                ?.takeIf { SystemFileSystem.exists(Path(it)) }
-                ?.let { parseRepoMapping(it).getOrElse { error -> return Result.failure(error) } }
-                ?: RepoMapping.default()
+            val repoMapping =
+                rawRlocation(mode, "_repo_mapping")
+                    ?.takeIf { SystemFileSystem.exists(Path(it)) }
+                    ?.let { parseRepoMapping(it).getOrElse { error -> return Result.failure(error) } }
+                    ?: RepoMapping.default()
 
             return Result.success(Runfiles(mode, repoMapping))
         }
 
         private fun createManifestBased(manifestPath: String): Result<Mode> {
-            val manifestContent = readText(manifestPath)
-                .getOrElse { return Result.failure(RunfilesError.RunfilesManifestIoError(it)) }
+            val manifestContent =
+                readText(manifestPath)
+                    .getOrElse { return Result.failure(RunfilesError.RunfilesManifestIoError(it)) }
             val pathMapping = mutableMapOf<String, String>()
             for (line in rustLines(manifestContent)) {
                 val index = line.indexOf(' ')
@@ -232,8 +244,9 @@ internal fun parseRepoMapping(path: String): Result<RepoMapping> {
     val exact = mutableMapOf<RepoMappingKey, String>()
     val prefixes = mutableMapOf<RepoMappingKey, String>()
 
-    val content = readText(path)
-        .getOrElse { return Result.failure(RunfilesError.RepoMappingIoError(it)) }
+    val content =
+        readText(path)
+            .getOrElse { return Result.failure(RunfilesError.RepoMappingIoError(it)) }
     for (line in rustLines(content)) {
         val parts = line.split(',', limit = 3)
         if (parts.size < 3) {
@@ -274,10 +287,13 @@ internal fun findRunfilesDir(sys: RunfilesSys): Result<String> {
         }
     }
 
-    val execPath = sys.args().firstOrNull()
-        ?: return Result.failure(RunfilesError.RunfilesDirNotFound)
-    val currentDir = sys.currentDir()
-        .getOrElse { return Result.failure(RunfilesError.RunfilesDirIoError(it)) }
+    val execPath =
+        sys.args().firstOrNull()
+            ?: return Result.failure(RunfilesError.RunfilesDirNotFound)
+    val currentDir =
+        sys
+            .currentDir()
+            .getOrElse { return Result.failure(RunfilesError.RunfilesDirIoError(it)) }
 
     var binaryPath = execPath
     while (true) {
@@ -295,20 +311,25 @@ internal fun findRunfilesDir(sys: RunfilesSys): Result<String> {
             next = parentPath(next)
         }
 
-        val isSymlink = sys.isSymlink(binaryPath)
-            .getOrElse { return Result.failure(RunfilesError.RunfilesDirIoError(it)) }
+        val isSymlink =
+            sys
+                .isSymlink(binaryPath)
+                .getOrElse { return Result.failure(RunfilesError.RunfilesDirIoError(it)) }
         if (!isSymlink) {
             break
         }
 
-        val linkTarget = sys.readLink(binaryPath)
-            .getOrElse { return Result.failure(RunfilesError.RunfilesDirIoError(it)) }
-        binaryPath = if (isAbsolutePath(linkTarget)) {
-            linkTarget
-        } else {
-            val linkDir = parentPath(binaryPath) ?: ""
-            pathJoin(pathJoin(currentDir, linkDir), linkTarget)
-        }
+        val linkTarget =
+            sys
+                .readLink(binaryPath)
+                .getOrElse { return Result.failure(RunfilesError.RunfilesDirIoError(it)) }
+        binaryPath =
+            if (isAbsolutePath(linkTarget)) {
+                linkTarget
+            } else {
+                val linkDir = parentPath(binaryPath) ?: ""
+                pathJoin(pathJoin(currentDir, linkDir), linkTarget)
+            }
     }
 
     return Result.failure(RunfilesError.RunfilesDirNotFound)
@@ -316,17 +337,25 @@ internal fun findRunfilesDir(sys: RunfilesSys): Result<String> {
 
 internal interface RunfilesSys {
     fun env(name: String): String?
+
     fun args(): List<String>
+
     fun currentDir(): Result<String>
+
     fun isSymlink(path: String): Result<Boolean>
+
     fun readLink(path: String): Result<String>
 }
 
 internal expect class RealRunfilesSys() : RunfilesSys {
     override fun env(name: String): String?
+
     override fun args(): List<String>
+
     override fun currentDir(): Result<String>
+
     override fun isSymlink(path: String): Result<Boolean>
+
     override fun readLink(path: String): Result<String>
 }
 
@@ -341,11 +370,12 @@ private fun rustLines(text: String): List<String> {
     if (text.isEmpty()) {
         return emptyList()
     }
-    val withoutFinalTerminator = when {
-        text.endsWith("\r\n") -> text.dropLast(2)
-        text.endsWith('\n') || text.endsWith('\r') -> text.dropLast(1)
-        else -> text
-    }
+    val withoutFinalTerminator =
+        when {
+            text.endsWith("\r\n") -> text.dropLast(2)
+            text.endsWith('\n') || text.endsWith('\r') -> text.dropLast(1)
+            else -> text
+        }
     if (withoutFinalTerminator.isEmpty()) {
         return emptyList()
     }

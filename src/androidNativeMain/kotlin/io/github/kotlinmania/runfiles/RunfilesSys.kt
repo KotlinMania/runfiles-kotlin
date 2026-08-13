@@ -1,4 +1,3 @@
-// port-lint: ignore
 // Platform hooks for the common runfiles port.
 package io.github.kotlinmania.runfiles
 
@@ -7,8 +6,8 @@ import kotlinx.cinterop.alloc
 import kotlinx.cinterop.memScoped
 import kotlinx.cinterop.ptr
 import kotlinx.cinterop.toKString
-import platform.posix.S_IFMT
 import platform.posix.S_IFLNK
+import platform.posix.S_IFMT
 import platform.posix.errno
 import platform.posix.getenv
 import platform.posix.lstat
@@ -25,16 +24,17 @@ internal actual class RealRunfilesSys actual constructor() : RunfilesSys {
 
     actual override fun currentDir(): Result<String> = platformCurrentDir()
 
-    actual override fun isSymlink(path: String): Result<Boolean> = memScoped {
-        val sb = alloc<stat>()
-        val rc = lstat(path, sb.ptr)
-        if (rc != 0) {
-            Result.failure(lastIoError("lstat($path)"))
-        } else {
-            val mode = sb.st_mode.toInt() and S_IFMT
-            Result.success(mode == S_IFLNK)
+    actual override fun isSymlink(path: String): Result<Boolean> =
+        memScoped {
+            val sb = alloc<stat>()
+            val rc = lstat(path, sb.ptr)
+            if (rc != 0) {
+                Result.failure(lastIoError("lstat($path)"))
+            } else {
+                val mode = sb.st_mode.toInt() and S_IFMT
+                Result.success(mode == S_IFLNK)
+            }
         }
-    }
 
     actual override fun readLink(path: String): Result<String> = platformReadLink(path)
 

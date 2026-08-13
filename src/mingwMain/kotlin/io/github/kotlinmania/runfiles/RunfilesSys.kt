@@ -1,4 +1,3 @@
-// port-lint: ignore
 // Platform hooks for the common runfiles port.
 package io.github.kotlinmania.runfiles
 
@@ -21,15 +20,16 @@ internal actual class RealRunfilesSys actual constructor() : RunfilesSys {
     actual override fun args(): List<String> =
         listOfNotNull(env("_"))
 
-    actual override fun currentDir(): Result<String> = memScoped {
-        val buf = allocArray<ByteVar>(PATH_MAX_BYTES)
-        val result = getcwd(buf, PATH_MAX_BYTES.convert())
-        if (result == null) {
-            Result.failure(lastIoError("getcwd"))
-        } else {
-            Result.success(result.toKString())
+    actual override fun currentDir(): Result<String> =
+        memScoped {
+            val buf = allocArray<ByteVar>(PATH_MAX_BYTES)
+            val result = getcwd(buf, PATH_MAX_BYTES.convert())
+            if (result == null) {
+                Result.failure(lastIoError("getcwd"))
+            } else {
+                Result.success(result.toKString())
+            }
         }
-    }
 
     actual override fun isSymlink(path: String): Result<Boolean> =
         Result.success(false)

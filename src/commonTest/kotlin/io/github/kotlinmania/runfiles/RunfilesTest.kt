@@ -21,9 +21,10 @@ class RunfilesTest {
     @Test
     fun testMockEnv() {
         val originalName = "rules_rust"
-        val mockedName = withMockEnv(mapOf("TEST_WORKSPACE" to "foobar")) { sys ->
-            sys.env("TEST_WORKSPACE") ?: ""
-        }
+        val mockedName =
+            withMockEnv(mapOf("TEST_WORKSPACE" to "foobar")) { sys ->
+                sys.env("TEST_WORKSPACE") ?: ""
+            }
 
         assertEquals("foobar", mockedName)
         assertEquals("rules_rust", originalName)
@@ -151,26 +152,29 @@ class RunfilesTest {
 
     @Test
     fun testManifestBasedCanReadDataFromRunfiles() {
-        val r = Runfiles(
-            mode = Mode.ManifestBased(mapOf("a/b" to "c/d")),
-            repoMapping = RepoMapping.new(),
-        )
+        val r =
+            Runfiles(
+                mode = Mode.ManifestBased(mapOf("a/b" to "c/d")),
+                repoMapping = RepoMapping.new(),
+            )
 
         assertEquals("c/d", r.rlocation("a/b"))
     }
 
     @Test
     fun testManifestBasedMissingFile() {
-        val r = Runfiles(
-            mode = Mode.ManifestBased(mapOf("a/b" to "c/d")),
-            repoMapping = RepoMapping.new(),
-        )
+        val r =
+            Runfiles(
+                mode = Mode.ManifestBased(mapOf("a/b" to "c/d")),
+                repoMapping = RepoMapping.new(),
+            )
 
         assertNull(r.rlocation("does/not/exist"))
     }
 
     private fun dedent(text: String): String =
-        text.lines()
+        text
+            .lines()
             .joinToString("\n") { line -> line.trimStart() }
 
     @Test
@@ -199,16 +203,17 @@ class RunfilesTest {
         assertEquals(
             RepoMapping(
                 prefixes = emptyMap(),
-                exact = mapOf(
-                    ("local_config_xcode" to "rules_rust") to "rules_rust",
-                    ("platforms" to "rules_rust") to "rules_rust",
-                    ("rust_darwin_aarch64__aarch64-apple-darwin__stable_tools" to "rules_rust") to "rules_rust",
-                    ("rules_rust_tinyjson" to "rules_rust") to "rules_rust",
-                    ("local_config_sh" to "rules_rust") to "rules_rust",
-                    ("bazel_tools" to "__main__") to "rules_rust",
-                    ("local_config_cc" to "rules_rust") to "rules_rust",
-                    ("" to "rules_rust") to "rules_rust",
-                ),
+                exact =
+                    mapOf(
+                        ("local_config_xcode" to "rules_rust") to "rules_rust",
+                        ("platforms" to "rules_rust") to "rules_rust",
+                        ("rust_darwin_aarch64__aarch64-apple-darwin__stable_tools" to "rules_rust") to "rules_rust",
+                        ("rules_rust_tinyjson" to "rules_rust") to "rules_rust",
+                        ("local_config_sh" to "rules_rust") to "rules_rust",
+                        ("bazel_tools" to "__main__") to "rules_rust",
+                        ("local_config_cc" to "rules_rust") to "rules_rust",
+                        ("" to "rules_rust") to "rules_rust",
+                    ),
             ),
             parseRepoMapping(valid.toString()).getOrThrow(),
         )
@@ -265,16 +270,19 @@ class RunfilesTest {
     fun testRlocationFromWithWildcard() {
         val runfilesDir = "build/tmp/runfiles-tests/test_rlocation_from_with_wildcard.runfiles"
 
-        val r = Runfiles(
-            mode = Mode.DirectoryBased(runfilesDir),
-            repoMapping = RepoMapping(
-                exact = emptyMap(),
-                prefixes = mapOf(
-                    ("+deps+" to "aaa") to "_main",
-                    ("+deps+" to "dep") to "+deps+dep1",
-                ),
-            ),
-        )
+        val r =
+            Runfiles(
+                mode = Mode.DirectoryBased(runfilesDir),
+                repoMapping =
+                    RepoMapping(
+                        exact = emptyMap(),
+                        prefixes =
+                            mapOf(
+                                ("+deps+" to "aaa") to "_main",
+                                ("+deps+" to "dep") to "+deps+dep1",
+                            ),
+                    ),
+            )
 
         assertEquals(pathJoin(runfilesDir, "_main/some/path"), r.rlocationFrom("aaa/some/path", "+deps+dep1"))
         assertEquals(pathJoin(runfilesDir, "_main/other/path"), r.rlocationFrom("aaa/other/path", "+deps+dep2"))
@@ -312,7 +320,6 @@ class RunfilesTest {
         }
         SystemFileSystem.delete(path, mustExist = false)
     }
-
 }
 
 internal expect fun supportsHostFileSystem(): Boolean
