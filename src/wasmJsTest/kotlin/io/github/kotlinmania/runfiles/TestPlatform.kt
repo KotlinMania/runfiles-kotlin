@@ -1,4 +1,3 @@
-// port-lint: ignore
 // Test host capability check for filesystem-backed runfiles cases.
 @file:OptIn(kotlin.js.ExperimentalWasmJsInterop::class)
 

@@ -1,4 +1,3 @@
-// port-lint: ignore
 // Test host capability check for filesystem-backed runfiles cases.
 package io.github.kotlinmania.runfiles
 

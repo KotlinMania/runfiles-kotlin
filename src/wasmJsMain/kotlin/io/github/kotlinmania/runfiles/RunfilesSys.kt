@@ -1,4 +1,3 @@
-// port-lint: ignore
 // Platform hooks for the common runfiles port.
 @file:OptIn(kotlin.js.ExperimentalWasmJsInterop::class)
 
