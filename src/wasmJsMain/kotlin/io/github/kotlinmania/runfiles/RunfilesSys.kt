@@ -31,8 +31,9 @@ private external fun jsArgs(): String
 @JsFun("() => { try { return (typeof process !== 'undefined' && process.cwd) ? process.cwd() : ''; } catch (e) { return ''; } }")
 private external fun jsCwd(): String
 
-@JsFun("(p) => { try { var r = eval('typeof require === \"function\" ? require : null'); return r ? r('fs').lstatSync(p).isSymbolicLink() : false; } catch (e) { return false; } }")
+// Use (new Function(...)) to hide require('fs') from webpack static analysis (AGENTS.md §10)
+@JsFun("(p) => { try { var rq = (new Function('return typeof require === \"function\" ? require : null'))(); return rq ? rq('fs').lstatSync(p).isSymbolicLink() : false; } catch (e) { return false; } }")
 private external fun jsIsSymlink(path: String): Boolean
 
-@JsFun("(p) => { var r = eval('typeof require === \"function\" ? require : null'); if (!r) throw new Error('require unavailable'); return r('fs').readlinkSync(p); }")
+@JsFun("(p) => { var rq = (new Function('return typeof require === \"function\" ? require : null'))(); if (!rq) throw new Error('require unavailable'); return rq('fs').readlinkSync(p); }")
 private external fun jsReadLink(path: String): String

@@ -39,14 +39,15 @@ private fun jsCwd(): String =
         "(function(){ try { return (typeof process !== 'undefined' && process.cwd) ? process.cwd() : ''; } catch (e) { return ''; } })()",
     )
 
+// Use (new Function(...)) to hide require('fs') from webpack static analysis (AGENTS.md §10)
 private fun jsIsSymlink(path: String): Boolean =
     js(
-        "(function(p){ try { var r = eval('typeof require === \"function\" ? require : null'); return r ? r('fs').lstatSync(p).isSymbolicLink() : false; } catch (e) { return false; } })(path)",
+        "(function(p){ try { var rq = (new Function('return typeof require === \"function\" ? require : null'))(); return rq ? rq('fs').lstatSync(p).isSymbolicLink() : false; } catch (e) { return false; } })(path)",
     )
 
 private fun jsReadLink(path: String): String =
     js(
-        "(function(p){ var r = eval('typeof require === \"function\" ? require : null'); if (!r) throw new Error('require unavailable'); return r('fs').readlinkSync(p); })(path)",
+        "(function(p){ var rq = (new Function('return typeof require === \"function\" ? require : null'))(); if (!rq) throw new Error('require unavailable'); return rq('fs').readlinkSync(p); })(path)",
     )
 
 private fun undefined(): dynamic = js("undefined")

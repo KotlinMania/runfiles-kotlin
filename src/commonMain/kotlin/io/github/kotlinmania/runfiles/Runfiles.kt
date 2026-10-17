@@ -327,7 +327,7 @@ internal fun findRunfilesDir(sys: RunfilesSys): Result<String> {
             if (isAbsolutePath(linkTarget)) {
                 linkTarget
             } else {
-                val linkDir = parentPath(binaryPath) ?: ""
+                val linkDir = parentPath(binaryPath).orEmpty()
                 pathJoin(pathJoin(currentDir, linkDir), linkTarget)
             }
     }

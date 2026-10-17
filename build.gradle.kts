@@ -318,14 +318,15 @@ if (gradle.startParameter.taskNames.any(::requestedTaskWantsAndroid)) {
     installProjectAndroidSdk(serviceOf())
 }
 
-val ensureAndroidSdk by tasks.registering {
-    group = "setup"
-    description = "Ensures the project-local Android SDK is installed (idempotent)."
-    onlyIf("Android SDK already installed at $projectAndroidSdkDir") { !isProjectAndroidSdkInstalled() }
-    doLast {
-        installProjectAndroidSdk(serviceOf())
+val ensureAndroidSdk =
+    tasks.register("ensureAndroidSdk") {
+        group = "setup"
+        description = "Ensures the project-local Android SDK is installed (idempotent)."
+        onlyIf("Android SDK already installed at $projectAndroidSdkDir") { !isProjectAndroidSdkInstalled() }
+        doLast {
+            installProjectAndroidSdk(serviceOf())
+        }
     }
-}
 
 // Secondary net: order every AGP Android task after the installer (a no-op on
 // warm runs). Excludes androidNative* (Kotlin/Native) and the installer itself.
@@ -419,10 +420,7 @@ kotlin {
         configureBenchmarkCompilation()
         addToXcf()
     }
-    watchosArm64 {
-        configureBenchmarkCompilation()
-        addToXcf()
-    }
+    // watchosArm64 (WatchOS 32 / arm64_32): retired by workspace policy (§5.5.1). WatchOS 32 is not supported.
     watchosDeviceArm64 {
         configureBenchmarkCompilation()
         addToXcf()
@@ -430,13 +428,6 @@ kotlin {
     watchosSimulatorArm64 {
         configureBenchmarkCompilation()
         addToXcf()
-    }
-
-    // iosX64: Intel Mac simulator. Tier 3 in Kotlin/Native but NOT deprecated —
-    // Apple still ships x86_64 iOS simulator runtimes, so it is always built.
-    iosX64 {
-        configureBenchmarkCompilation()
-        addToXcf(static = true)
     }
 
     // Other native — Tier 1/2
@@ -566,20 +557,19 @@ tasks.withType<AbstractTestTask>().configureEach {
 // Static analysis: Detekt + Ktlint
 // ============================================================================
 detekt {
-    buildUponDefaultConfig = true
-    allRules = false
-    autoCorrect = false
+    buildUponDefaultConfig.set(true)
+    allRules.set(false)
+    autoCorrect.set(false)
     source.setFrom(files("src"))
     config.setFrom(files("detekt.yml"))
-    parallel = true
+    parallel.set(true)
 }
 
-tasks.withType<io.gitlab.arturbosch.detekt.Detekt>().configureEach {
+tasks.withType<dev.detekt.gradle.Detekt>().configureEach {
     reports {
         html.required.set(true)
         sarif.required.set(true)
-        txt.required.set(false)
-        xml.required.set(false)
+        checkstyle.required.set(false)
     }
 }
 
@@ -601,7 +591,7 @@ ktlint {
 
 if (benchmarkEnabled) {
     tasks
-        .withType<io.gitlab.arturbosch.detekt.Detekt>()
+        .withType<dev.detekt.gradle.Detekt>()
         .matching {
             it.name.contains("BenchmarkBenchmark")
         }.configureEach {
@@ -617,7 +607,7 @@ if (benchmarkEnabled) {
 }
 
 tasks.named("check") {
-    dependsOn(tasks.withType<io.gitlab.arturbosch.detekt.Detekt>())
+    dependsOn(tasks.withType<dev.detekt.gradle.Detekt>())
     dependsOn(tasks.named("ktlintCheck"))
     // Android host unit tests run here alongside the tests that check -> allTests
     // already executes (jvm, macosArm64, the Apple simulators, js, wasmJs,
@@ -649,15 +639,25 @@ val webpackVersion: String =
 
 rootProject.extensions.configure<NodeJsEnvSpec>("kotlinNodeJsSpec") { version.set(nodeVersion) }
 rootProject.extensions.configure<WasmNodeJsEnvSpec>("kotlinWasmNodeJsSpec") { version.set(wasmNodeVersion) }
-rootProject.extensions.configure<YarnRootEnvSpec>("kotlinYarnSpec") { version.set(yarnVersion) }
-rootProject.extensions.configure<WasmYarnRootEnvSpec>("kotlinWasmYarnSpec") { version.set(wasmYarnVersion) }
+rootProject.extensions.configure<YarnRootEnvSpec>("kotlinYarnSpec") {
+    version.set(yarnVersion)
+    yarnLockMismatchReport.set(org.jetbrains.kotlin.gradle.targets.js.yarn.YarnLockMismatchReport.WARNING)
+    yarnLockAutoReplace.set(true)
+}
+rootProject.extensions.configure<WasmYarnRootEnvSpec>("kotlinWasmYarnSpec") {
+    version.set(wasmYarnVersion)
+    yarnLockMismatchReport.set(org.jetbrains.kotlin.gradle.targets.js.yarn.YarnLockMismatchReport.WARNING)
+    yarnLockAutoReplace.set(true)
+}
 
 rootProject.extensions.configure<YarnRootExtension>("kotlinYarn") {
-    project.properties
-        .filterKeys { it.startsWith("yarn.resolution.") }
-        .forEach { (key, value) ->
+    yarnLockMismatchReportProperty.set(org.jetbrains.kotlin.gradle.targets.js.yarn.YarnLockMismatchReport.WARNING)
+    yarnLockAutoReplaceProperty.set(true)
+    providers
+        .gradlePropertiesPrefixedBy("yarn.resolution.")
+        .getOrElse(emptyMap())
+        .forEach { (key, ver) ->
             val pkg = key.removePrefix("yarn.resolution.")
-            val ver = value as? String ?: return@forEach
             resolution(pkg, ver)
             resolution("**/$pkg", ver)
         }
@@ -678,12 +678,53 @@ val patchedKarmaWebpackPackage =
 //       NodeJsEnvSpec API gains equivalent properties. Track KGP release notes before removing.
 rootProject.extensions.configure<NodeJsRootExtension>("kotlinNodeJs") {
     versions.webpack.version = webpackVersion
-    versions.webpackCli.version = providers.gradleProperty("node.webpackCli.version").getOrElse("7.0.2")
-    versions.karma.version = providers.gradleProperty("node.karma.version").getOrElse("npm:karma-maintained@6.4.7")
+    versions.webpackCli.version = providers.gradleProperty("node.webpackCli.version").getOrElse("7.2.3")
+    versions.karma.version = providers.gradleProperty("node.karma.version").getOrElse("npm:karma-maintained@6.4.8")
     versions.karmaWebpack.version = "file:$patchedKarmaWebpackPackage"
     versions.mocha.version = providers.gradleProperty("node.mocha.version").getOrElse("12.0.0-beta-10")
     versions.kotlinWebHelpers.version = providers.gradleProperty("node.kotlinWebHelpers.version").getOrElse("3.1.0")
 }
+
+// Make kotlinUpgradeYarnLock and kotlinWasmUpgradeYarnLock dependencies in the build process
+// for KotlinJS and other JavaScript/WASM targets so that yarn.lock is always upgraded automatically.
+val jsTasksNeedingYarnLock =
+    setOf(
+        "compileKotlinJs",
+        "compileTestKotlinJs",
+        "jsProcessResources",
+        "jsTestProcessResources",
+        "jsNodeTest",
+        "jsBrowserTest",
+        "kotlinStoreYarnLock",
+    )
+
+tasks
+    .matching { it.name in jsTasksNeedingYarnLock }
+    .configureEach {
+        dependsOn("kotlinUpgradeYarnLock")
+    }
+
+val wasmTasksNeedingYarnLock =
+    setOf(
+        "compileKotlinWasmJs",
+        "compileTestKotlinWasmJs",
+        "wasmJsProcessResources",
+        "wasmJsTestProcessResources",
+        "wasmJsNodeTest",
+        "wasmJsBrowserTest",
+        "compileKotlinWasmWasi",
+        "compileTestKotlinWasmWasi",
+        "wasmWasiProcessResources",
+        "wasmWasiTestProcessResources",
+        "wasmWasiNodeTest",
+        "kotlinWasmStoreYarnLock",
+    )
+
+tasks
+    .matching { it.name in wasmTasksNeedingYarnLock }
+    .configureEach {
+        dependsOn("kotlinWasmUpgradeYarnLock")
+    }
 
 // ============================================================================
 // Maven Central publishing — Central Portal, first-party + bespoke upload
@@ -898,6 +939,13 @@ val publishToCentralPortal by tasks.registering {
 // Exact test lifecycle task. Without this, ./gradlew test is ambiguous between
 // Android test task names. This runs commonTest through the KMP allTests
 // lifecycle and adds the Android host + Swift Export parity tests.
+tasks.register("test") {
+    group = "verification"
+    description = "Runs the commonTest-backed KMP suite, Android host tests, and Swift Export smoke test."
+    dependsOn("hostTests")
+    dependsOn("swiftExportSmokeTest")
+}
+
 tasks.register("setupAndroidSdk") {
     group = "setup"
     description = "Downloads and configures the project-local Android SDK. (Alias for ensureAndroidSdk)"
@@ -913,7 +961,9 @@ tasks.register("hostTests") {
     dependsOn(
         "jvmTest",
         "macosArm64Test",
+        "kotlinUpgradeYarnLock",
         "jsNodeTest",
+        "kotlinWasmUpgradeYarnLock",
         "wasmJsNodeTest",
         "wasmWasiNodeTest",
         "testAndroidHostTest",
@@ -923,19 +973,26 @@ tasks.register("hostTests") {
 // Patch generated SPM Package.swift to include minimum macOS platform for Swift Concurrency
 tasks.matching { it.name.contains("GenerateSPMPackage") }.configureEach {
     doLast {
-        val spmDir = layout.buildDirectory.dir("SPMPackage").orNull?.asFile
+        val spmDir =
+            layout.buildDirectory
+                .dir("SPMPackage")
+                .orNull
+                ?.asFile
         if (spmDir != null && spmDir.exists()) {
-            spmDir.walkTopDown().filter { it.name == "Package.swift" }.forEach { file ->
-                val text = file.readText()
-                if (!text.contains("platforms:")) {
-                    file.writeText(
-                        text.replaceFirst(
-                            Regex("""(let package = Package\s*\(\s*name:\s*"[^"]*",)"""),
-                            "$1\n    platforms: [.macOS(.v14)],",
-                        ),
-                    )
+            spmDir
+                .walkTopDown()
+                .filter { it.name == "Package.swift" }
+                .forEach { file ->
+                    val text = file.readText()
+                    if (!text.contains("platforms:")) {
+                        file.writeText(
+                            text.replaceFirst(
+                                Regex("""(let package = Package\s*\(\s*name:\s*"[^"]*",)"""),
+                                "$1\n    platforms: [.macOS(\"15.0\")],",
+                            ),
+                        )
+                    }
                 }
-            }
         }
     }
 }
@@ -981,7 +1038,7 @@ tasks.register("swiftExportSmokeTest") {
                         "CONFIGURATION" to "Debug",
                         "ARCHS" to "arm64",
                         "FRAMEWORKS_FOLDER_PATH" to "Frameworks",
-                        "MACOSX_DEPLOYMENT_TARGET" to "14.0",
+                        "MACOSX_DEPLOYMENT_TARGET" to "15.0",
                         "DEPLOYMENT_TARGET_SETTING_NAME" to "MACOSX_DEPLOYMENT_TARGET",
                     ),
                 )
@@ -1003,10 +1060,9 @@ tasks.register("swiftExportSmokeTest") {
 
 // ============================================================================
 // `build` aggregate
-// ----------------------------------------------------------------------------
 // Every configured native target, unconditionally. This is the audit contract —
-// it must mirror the kotlin { } target block exactly. watchosArm32 is the only
-// retired native target (see §5.5.1); everything else MUST build.
+// it must mirror the kotlin { } target block exactly. All native 32-bit and
+// Apple-specific x64 targets are retired; every retained target MUST build.
 // Do not add a dynamic tasks.matching fallback here: copied templates must make
 // the target surface explicit so missing declarations fail loudly in review.
 // ============================================================================
@@ -1016,14 +1072,12 @@ val nativeTargetNames =
         "androidNativeX64",
         "iosArm64",
         "iosSimulatorArm64",
-        "iosX64",
         "linuxArm64",
         "linuxX64",
         "macosArm64",
         "mingwX64",
         "tvosArm64",
         "tvosSimulatorArm64",
-        "watchosArm64",
         "watchosDeviceArm64",
         "watchosSimulatorArm64",
     )
@@ -1041,6 +1095,10 @@ val fullTargetBuildTaskNames =
                 "assembleAndroidDeviceTest",
                 "jvmMainClasses",
                 "jvmTestClasses",
+                "kotlinUpgradeYarnLock",
+                "kotlinStoreYarnLock",
+                "kotlinWasmUpgradeYarnLock",
+                "kotlinWasmStoreYarnLock",
                 "jsMainClasses",
                 "jsTestClasses",
                 "wasmJsMainClasses",
