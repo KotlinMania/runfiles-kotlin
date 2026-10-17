@@ -1,4 +1,4 @@
-// port-lint: source runfiles.rs
+// port-lint: tests runfiles.rs
 package io.github.kotlinmania.runfiles
 
 import kotlinx.io.buffered
@@ -23,7 +23,7 @@ class RunfilesTest {
         val originalName = "rules_rust"
         val mockedName =
             withMockEnv(mapOf("TEST_WORKSPACE" to "foobar")) { sys ->
-                sys.env("TEST_WORKSPACE") ?: ""
+                sys.env("TEST_WORKSPACE").orEmpty()
             }
 
         assertEquals("foobar", mockedName)
@@ -174,8 +174,9 @@ class RunfilesTest {
 
     private fun dedent(text: String): String =
         text
-            .lines()
-            .joinToString("\n") { line -> line.trimStart() }
+            .lineSequence()
+            .map { it.trimStart() }
+            .joinToString("\n")
 
     @Test
     fun testParseRepoMapping() {
